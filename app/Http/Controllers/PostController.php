@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\BlogPosted;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
@@ -51,11 +53,14 @@ class PostController extends Controller
         $title = $request->input('title');
         $content = $request->input('content');
 
-        Post::create([
+        $post = Post::create([
             'title' => $title,
             'content' => $content,
         ]);
 
+        \Mail::to(Auth::user()->email)->send(new BlogPosted($post));
+
+        $this->notify_telegram($post);
 
         return redirect('posts');
     }
@@ -130,5 +135,21 @@ class PostController extends Controller
 
         Post::where('id', $id)->delete();
         return redirect('posts');
+    }
+
+    private function notify_telegram($post)
+    {
+        $api_token = "7759781008:AAFgZpDNJFml3whAifAHZ0ffJuxQ-inQYOM";
+        $url = "https://api.telegram.org/bot{$api_token}/sendMessage";
+        $chat_id = -1002417869965;
+        $content = "Ada postingan baru oi di blog gua: <strong>\"{$post->title}\"</strong>";
+
+        $data = [
+            'chat_id' => $chat_id,
+            'text' => $content,
+            'parse_mode' => "HTML"
+        ];
+
+        Http::post($url, $data);
     }
 }
